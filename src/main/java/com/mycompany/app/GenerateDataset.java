@@ -165,9 +165,6 @@ public class GenerateDataset {
             }
         }else if(message.startsWith("ZOOKEEPER-")){
             for (Issue issue : issueList){
-                /*if (issue.getKey().contains(message.split(":")[0]) || issue.getKey().contains(message.split("\\.")[0])){
-                    return issue;
-                }*/
                 if (issue.getKey().contains(message.split(":")[0]) || issue.getKey().contains(message.split("\\.")[0])){
                     return issue;
                 }

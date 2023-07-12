@@ -34,7 +34,7 @@ public class JiraReleases {
             if (versions.getJSONObject(i).has("releaseDate") && versions.getJSONObject(i).has("name")) {
                 LocalDateTime date = LocalDate.parse(versions.getJSONObject(i).get("releaseDate").toString()).atStartOfDay();
                 String name = versions.getJSONObject(i).get("name").toString();
-                addRelease(releasesMap, name, date, projName);
+                addRelease(releasesMap, name, date);
             }
         }
 
@@ -64,7 +64,7 @@ public class JiraReleases {
     }
 
 
-    private static void addRelease(HashMap<String,LocalDateTime> releasesMap, String name, LocalDateTime date, String projName) {
+    private static void addRelease(HashMap<String,LocalDateTime> releasesMap, String name, LocalDateTime date) {
         String[] tkn = name.split("-");
         if (!name.contains("-") || tkn.length == 0){
             releasesMap.put("refs/tags/release-" + name, date);
