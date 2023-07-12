@@ -1,0 +1,11 @@
+{
+  "PROJECT_NAMES": [
+    "ZOOKEEPER",
+    "BOOKKEEPER"
+  ],
+  "REPO_PATH": [
+    "/home/valerio/IswWorkspace/Progetti/zookeeper/.git",
+    "/home/valerio/IswWorkspace/Progetti/bookkeeper/.git"
+],
+  "LOG_FILE_NAME" : "log.txt"
+}
