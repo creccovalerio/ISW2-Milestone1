@@ -30,8 +30,8 @@ import static com.mycompany.app.connector.JiraIssues.retrieveIssues;
 public class GenerateDataset {
     private static List<Issue> issueList = null;
     private static List<Release> releaseList = null;
-    private static Repository REPOSITORY = null;
-    private static Git GIT_REPOSITORY = null;
+    private static Repository repository = null;
+    private static Git gitRepository = null;
 
 
     /** Ritorna l'age del file */
@@ -90,15 +90,15 @@ public class GenerateDataset {
 
     /** Ritorna il numero di Churn sul file nel commit |added - deleted| */
     public static int countChurn(RevTree newTree, RevTree oldTree, String filepath) throws IOException {
-        TreeWalk tw = new TreeWalk(REPOSITORY);
+        TreeWalk tw = new TreeWalk(repository);
         tw.addTree(newTree);
         if (oldTree != null) tw.addTree(oldTree);
         tw.setRecursive(true);
         tw.setFilter(PathFilter.create(filepath));
         tw.next();
-        int currLines = countLines(REPOSITORY.open(tw.getObjectId(0)).openStream());
+        int currLines = countLines(repository.open(tw.getObjectId(0)).openStream());
         int prevLines = 0;
-        if (oldTree != null && tw.getFileMode(1)!= FileMode.MISSING) prevLines = countLines(REPOSITORY.open(tw.getObjectId(1)).openStream());
+        if (oldTree != null && tw.getFileMode(1)!= FileMode.MISSING) prevLines = countLines(repository.open(tw.getObjectId(1)).openStream());
         return Math.abs(currLines - prevLines);
     }
 
@@ -106,7 +106,7 @@ public class GenerateDataset {
     /** Ritorna il numero di LOC Touched sul file nel commit (added + deleted) */
     public static int countLOCTouched(DiffEntry diff) throws IOException {
         DiffFormatter formatter = new DiffFormatter(DisabledOutputStream.INSTANCE);
-        formatter.setRepository(REPOSITORY);
+        formatter.setRepository(repository);
         formatter.setContext(0);
         FileHeader fileHeader = formatter.toFileHeader(diff);
         List<? extends HunkHeader> hunks = fileHeader.getHunks();
@@ -125,7 +125,7 @@ public class GenerateDataset {
     /** Ritorna il numero di LOC aggiunte sul file nel commit */
     public static int countAddedLOCs(DiffEntry diff) throws IOException {
         DiffFormatter formatter = new DiffFormatter(DisabledOutputStream.INSTANCE);
-        formatter.setRepository(REPOSITORY);
+        formatter.setRepository(repository);
         formatter.setContext(0);
         FileHeader fileHeader = formatter.toFileHeader(diff);
         List<? extends HunkHeader> hunks = fileHeader.getHunks();
@@ -224,7 +224,7 @@ public class GenerateDataset {
 
     /** Azioni da eseguire se il commit analizzato è il primo e quindi non ha parent */
     public static void firstCommitCase(RevTree tree, RevCommit commit, int releaseNumber) throws IOException {
-        TreeWalk treeWalk = new TreeWalk(REPOSITORY);
+        TreeWalk treeWalk = new TreeWalk(repository);
         treeWalk.addTree(tree);
         treeWalk.setRecursive(true);
         FileCSV classFile = null;
@@ -236,14 +236,14 @@ public class GenerateDataset {
                 fileNumber += 1;
                 classFile = releaseList.get(releaseNumber-1).getFiles().get(index);
                 classFile.incrementCommitsNumbers();
-                classFile.incrementTouchedLOCs(countLines(REPOSITORY.open(treeWalk.getObjectId(0)).openStream()));
+                classFile.incrementTouchedLOCs(countLines(repository.open(treeWalk.getObjectId(0)).openStream()));
                 classFile.increaseChurn(countChurn(tree, null, filePath));
                 Issue issue = bugFixIssue(commit);
                 if (issue != null){
                     classFile.incrementNumberOfBugFix();
                     setBugginess(issue, filePath);
                 }
-                classFile.incrementAddedLOCs(countLines(REPOSITORY.open(treeWalk.getObjectId(0)).openStream()));
+                classFile.incrementAddedLOCs(countLines(repository.open(treeWalk.getObjectId(0)).openStream()));
             }
         }
         if (fileNumber != 0) classFile.incrementAverageChangeSet(fileNumber);
@@ -255,10 +255,10 @@ public class GenerateDataset {
         RevCommit parentCommit = revWalk.parseCommit(commit.getParent(0).getId());
         RevTree oldTree = parentCommit.getTree();
         CanonicalTreeParser newTreeParser = new CanonicalTreeParser();
-        newTreeParser.reset(REPOSITORY.newObjectReader(), tree.getId());
+        newTreeParser.reset(repository.newObjectReader(), tree.getId());
         CanonicalTreeParser oldTreeParser = new CanonicalTreeParser();
-        oldTreeParser.reset(REPOSITORY.newObjectReader(), oldTree.getId());
-        List<DiffEntry> diffs = GIT_REPOSITORY.diff()
+        oldTreeParser.reset(repository.newObjectReader(), oldTree.getId());
+        List<DiffEntry> diffs = gitRepository.diff()
                 .setNewTree(newTreeParser)
                 .setOldTree(oldTreeParser)
                 .call();
@@ -288,7 +288,7 @@ public class GenerateDataset {
             int releaseNumber = releaseCommits.indexOf(commitsPerRelease) + 1;
             for (RevCommit commit : commitsPerRelease){
                 RevTree tree = commit.getTree();
-                RevWalk revWalk = new RevWalk(REPOSITORY);
+                RevWalk revWalk = new RevWalk(repository);
                 // caso speciale per il primo commit che non ha parent
                 if (commit.getParentCount() == 0) {
                     firstCommitCase(tree, commit, releaseNumber);
@@ -360,22 +360,17 @@ public class GenerateDataset {
                 String repoPath = Initializer.getRepoPath().get(projects.indexOf(projectName));
 
                 FileRepositoryBuilder builder = new FileRepositoryBuilder();
-                REPOSITORY = builder
+                repository = builder
                         .setGitDir(new File(repoPath)).readEnvironment()
                         .findGitDir().build();
 
-                GIT_REPOSITORY = new Git(REPOSITORY);
+                gitRepository = new Git(repository);
 
                 // JIRA: prendo la lista di release (ordinata)
-                releaseList = retrieveReleases(REPOSITORY, projectName);
-                for(Release release : releaseList){
-                    System.out.println(release.getName());
-                }
+                releaseList = retrieveReleases(repository, projectName);
+
                 // JIRA: prendo la lista di issue bug fix
                 issueList = retrieveIssues(projectName, releaseList);
-                for(Issue issue : issueList){
-                    System.out.println(issue.getKey());
-                }
 
                 if (releaseList.size()%2 == 0)
                     releaseList = releaseList.subList(0, releaseList.size()/2);
@@ -383,8 +378,8 @@ public class GenerateDataset {
                     releaseList = releaseList.subList(0, (releaseList.size()+1)/2);
 
                 for (Release release : releaseList) {
-                    release.retrieveCommits(REPOSITORY);
-                    release.retrieveFiles(REPOSITORY);
+                    release.retrieveCommits(repository);
+                    release.retrieveFiles(repository);
                 }
 
                 // Calcola e setta il coefficiente di proportion per ogni release
@@ -401,7 +396,7 @@ public class GenerateDataset {
 
                 IO.writeOnFile(projectName, releaseList);
 
-                REPOSITORY.close();
+                repository.close();
             }
         } catch (Exception e){
             IO.appendOnLog(e+"\n");

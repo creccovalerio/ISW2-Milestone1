@@ -42,8 +42,8 @@ public class JiraIssues {
                 JSONArray fixVersions = fields.getJSONArray("fixVersions");
                 JSONArray injectedVersions = fields.getJSONArray("versions");
                 setOpeningVersion(issue, openingVersionDate, releaseList);
-                setFixVersion(issue, fixVersions, projectName, releaseList);
-                setInjectedVersion(issue, injectedVersions, projectName, releaseList);
+                setFixVersion(issue, fixVersions, releaseList);
+                setInjectedVersion(issue, injectedVersions, releaseList);
             }
         } while (i < total);
         return issuesListJira;
@@ -62,7 +62,7 @@ public class JiraIssues {
 
 
     /** Setta la fix version nel'issue specificata */
-    public static void setFixVersion(Issue issue, JSONArray fixVersions, String projectName, List<Release> releaseList){
+    public static void setFixVersion(Issue issue, JSONArray fixVersions, List<Release> releaseList){
         if (fixVersions.length() != 0){
             String version = fixVersions.getJSONObject(fixVersions.length()-1).get("name").toString();
             for (Release release : releaseList){
@@ -76,7 +76,7 @@ public class JiraIssues {
 
 
     /** Setta l'injected version nel'issue specificata */
-    public static void setInjectedVersion(Issue issue, JSONArray injectedVersions, String projectName, List<Release> releaseList){
+    public static void setInjectedVersion(Issue issue, JSONArray injectedVersions, List<Release> releaseList){
         if (injectedVersions.length() != 0){
             String version = injectedVersions.getJSONObject(0).get("name").toString();
             for (Release release : releaseList){
